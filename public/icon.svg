@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#173B70" />
+      <stop offset="100%" stop-color="#0E2347" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#F2A93B" />
+    </linearGradient>
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#246BCE" />
+    </linearGradient>
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2DD4BF" />
+      <stop offset="100%" stop-color="#0E9F9A" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded squircle with safe zone -->
+  <rect width="512" height="512" rx="120" fill="url(#bgGrad)" />
+
+  <!-- Accent glow rings -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="url(#blueGrad)" stroke-width="4" stroke-opacity="0.25" />
+  <circle cx="256" cy="256" r="150" fill="none" stroke="url(#tealGrad)" stroke-width="3" stroke-opacity="0.2" stroke-dasharray="12 12" />
+
+  <!-- Central Shield / Wallet Emblem -->
+  <g filter="url(#shadow)">
+    <!-- Base card -->
+    <rect x="136" y="160" width="240" height="180" rx="24" fill="url(#blueGrad)" />
+    <!-- Overlapping card with credit receipt angle -->
+    <rect x="156" y="130" width="200" height="150" rx="20" fill="url(#tealGrad)" opacity="0.9" />
+    
+    <!-- Currency / Dollar / Real Symbol in Gold -->
+    <circle cx="256" cy="256" r="64" fill="url(#goldGrad)" stroke="#FFFFFF" stroke-width="4" />
+    <text x="256" y="278" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="900" fill="#173B70" text-anchor="middle">R$</text>
+
+    <!-- Upward trend arrow indicating financial control & growth -->
+    <path d="M190 380 L235 345 L275 365 L325 315" fill="none" stroke="#2DD4BF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M305 315 L325 315 L325 335" fill="none" stroke="#2DD4BF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

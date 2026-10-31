@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-navy: #173B70;
+  --color-brand-navy-dark: #0F274A;
+  --color-brand-navy-light: #1E4B8F;
+  --color-brand-blue: #246BCE;
+  --color-brand-blue-hover: #1D58AB;
+  --color-brand-blue-light: #EBF3FC;
+  --color-brand-turquoise: #0E9F9A;
+  --color-brand-turquoise-dark: #0A7B77;
+  --color-brand-turquoise-light: #E6F7F6;
+  --color-brand-gold: #F2A93B;
+  --color-brand-gold-dark: #D48E25;
+  --color-brand-gold-light: #FEF7EA;
+  --color-status-paid: #10B981;
+  --color-status-paid-light: #ECFDF5;
+  --color-status-warning: #F59E0B;
+  --color-status-warning-light: #FFFBEB;
+  --color-status-danger: #EF4444;
+  --color-status-danger-light: #FEF2F2;
+  --color-surface-bg: #F8FAFC;
+  --color-surface-card: #FFFFFF;
+  --color-surface-muted: #F1F5F9;
+}
+
+@layer base {
+  body {
+    background-color: #F8FAFC;
+    color: #1E293B;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Virtual Keyboard Adaptive Scrolling & Viewport Optimizations */
+input, textarea, select {
+  scroll-margin-bottom: 110px;
+  scroll-margin-top: 70px;
+}
+
+/* Modal and form scroll containers with safe keyboard space */
+.modal-scroll-container {
+  max-height: 88dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Extra bottom padding on touch devices to ensure buttons clear bottom nav and keyboard */
+@media (max-width: 1024px) {
+  .keyboard-safe-bottom {
+    padding-bottom: max(6rem, env(safe-area-inset-bottom, 2rem));
+  }
+}

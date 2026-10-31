@@ -1,0 +1,6 @@
+{
+  "name": "Meu Financeiro — Controle de Contas e Vendas Fiadas",
+  "description": "Sistema profissional de administração financeira e controle de vendas fiadas, com parcelamento flexível, histórico de pagamentos e suporte PWA responsivo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

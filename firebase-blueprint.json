@@ -1,0 +1,155 @@
+{
+  "entities": {
+    "Client": {
+      "title": "Client",
+      "description": "Cliente cadastrado para compras e vendas fiadas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "email": { "type": "string", "maxLength": 100 },
+        "document": { "type": "string", "maxLength": 30 },
+        "address": { "type": "string", "maxLength": 200 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "phone", "createdAt", "updatedAt"]
+    },
+    "Sale": {
+      "title": "Sale",
+      "description": "Registro de venda fiada e contrato de parcelamento",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "clientPhone": { "type": "string", "maxLength": 20 },
+        "productDescription": { "type": "string", "maxLength": 300 },
+        "totalAmount": { "type": "number" },
+        "installmentsCount": { "type": "number" },
+        "intervalType": { "type": "string", "enum": ["monthly", "weekly", "biweekly", "custom"] },
+        "firstDueDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "completed", "cancelled"] },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "clientId", "clientName", "productDescription", "totalAmount", "installmentsCount", "createdAt", "updatedAt"]
+    },
+    "Installment": {
+      "title": "Installment",
+      "description": "Registro individual de parcela com histórico e flexibilidade financeira",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "saleId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "clientPhone": { "type": "string", "maxLength": 20 },
+        "installmentNumber": { "type": "number" },
+        "totalInstallments": { "type": "number" },
+        "productDescription": { "type": "string", "maxLength": 300 },
+        "originalAmount": { "type": "number" },
+        "currentAmount": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "remainingAmount": { "type": "number" },
+        "dueDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "partially_paid", "paid", "overdue"] },
+        "isOverdue": { "type": "boolean" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "transferredToInstallmentId": { "type": "string" },
+        "transferredToDate": { "type": "string" },
+        "isTransferred": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "saleId", "clientId", "installmentNumber", "totalInstallments", "originalAmount", "currentAmount", "paidAmount", "remainingAmount", "dueDate", "status", "createdAt", "updatedAt"]
+    },
+    "PaymentRecord": {
+      "title": "PaymentRecord",
+      "description": "Recibo e histórico individual de pagamento recebido",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "installmentId": { "type": "string" },
+        "saleId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "amount": { "type": "number" },
+        "paymentDate": { "type": "string" },
+        "paymentMethod": { "type": "string", "enum": ["pix", "dinheiro", "cartao_credito", "cartao_debito", "transferencia", "outro"] },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "installmentId", "saleId", "clientId", "amount", "paymentDate", "paymentMethod", "createdAt"]
+    },
+    "FinancialNote": {
+      "title": "FinancialNote",
+      "description": "Lembrete, anotação ou agendamento de cobrança financeira",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string", "maxLength": 100 },
+        "content": { "type": "string", "maxLength": 500 },
+        "type": { "type": "string", "enum": ["reminder", "collection", "general", "visit"] },
+        "targetDate": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string", "maxLength": 100 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "type", "targetDate", "isCompleted", "priority", "createdAt", "updatedAt"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Configurações do perfil e negócio do administrador financeiro",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "businessName": { "type": "string", "maxLength": 100 },
+        "ownerName": { "type": "string", "maxLength": 100 },
+        "phone": { "type": "string", "maxLength": 20 },
+        "pixKey": { "type": "string", "maxLength": 100 },
+        "pixKeyType": { "type": "string", "enum": ["cpf", "cnpj", "email", "telefone", "aleatoria"] },
+        "receiptFooterMessage": { "type": "string", "maxLength": 200 },
+        "enableSoundAlerts": { "type": "boolean" }
+      },
+      "required": ["userId", "businessName", "ownerName"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/clients/{clientId}": {
+      "schema": { "$ref": "#/entities/Client" },
+      "description": "Armazena a lista de clientes exclusivos de cada usuário"
+    },
+    "/users/{userId}/sales/{saleId}": {
+      "schema": { "$ref": "#/entities/Sale" },
+      "description": "Armazena as vendas fiadas contratadas de cada usuário"
+    },
+    "/users/{userId}/installments/{installmentId}": {
+      "schema": { "$ref": "#/entities/Installment" },
+      "description": "Armazena cada parcela individual para gestão e flexibilidade financeira"
+    },
+    "/users/{userId}/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/PaymentRecord" },
+      "description": "Histórico imutável de recibos e pagamentos efetuados"
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/FinancialNote" },
+      "description": "Agenda e anotações financeiras com lembretes de cobrança"
+    },
+    "/users/{userId}/settings/profile": {
+      "schema": { "$ref": "#/entities/UserSettings" },
+      "description": "Configurações personalizadas do usuário do sistema"
+    }
+  }
+}

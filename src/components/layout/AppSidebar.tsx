@@ -12,6 +12,7 @@ import {
   Shield,
   LogOut,
   UserCheck,
+  Landmark,
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 
@@ -92,6 +93,13 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
     },
     ...(isMasterAdmin
       ? [
+          {
+            id: 'minhas_contas',
+            label: 'Minhas Contas',
+            icon: Landmark,
+            badge: null,
+            color: 'text-violet-600',
+          },
           {
             id: 'usuarios',
             label: 'Usuários do Sistema',

@@ -157,3 +157,55 @@ export interface SystemUser {
   updatedAt: string;
   createdBy: string;
 }
+
+// ============================================================================
+// MINHAS CONTAS (Área de Finanças Pessoais - Totalmente Isolada)
+// ============================================================================
+
+export type PersonalBillType = 'fixed' | 'installment' | 'occasional'; // conta fixa, parcelada, eventual
+export type PersonalBillRecurrence = 'monthly' | 'weekly' | 'annual' | 'none'; // mensal, semanal, anual, sem recorrência
+export type PersonalBillStatus = 'pending' | 'partially_paid' | 'paid' | 'overdue';
+export type PersonalPaymentMethod = 'dinheiro' | 'pix' | 'cartao' | 'transferencia' | 'outro';
+
+export interface PersonalBillPayment {
+  id: string;
+  billId: string;
+  amount: number;
+  paymentDate: string; // YYYY-MM-DD
+  paymentMethod: PersonalPaymentMethod;
+  notes?: string;
+  createdAt: string;
+  userId: string;
+}
+
+export interface PersonalBill {
+  id: string;
+  name: string;
+  category: string;
+  amount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  dueDate: string; // YYYY-MM-DD
+  type: PersonalBillType;
+  recurrence: PersonalBillRecurrence;
+  installmentsCount?: number;
+  currentInstallmentNumber?: number;
+  notes?: string;
+  status: PersonalBillStatus;
+  payments: PersonalBillPayment[];
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+}
+
+export interface PersonalFinancialSummary {
+  totalMonthBills: number;
+  totalMonthPaid: number;
+  totalMonthPending: number;
+  totalMonthOverdue: number;
+  countBills: number;
+  countPaid: number;
+  countPending: number;
+  countOverdue: number;
+}
+

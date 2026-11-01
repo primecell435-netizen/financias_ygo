@@ -17,6 +17,7 @@ import {
   formatDate,
   formatDateTime,
   generateWhatsAppLink,
+  calculateSaleRemainingBalance,
 } from '../../utils/formatters';
 
 export const PaymentsView: React.FC = () => {
@@ -58,6 +59,26 @@ export const PaymentsView: React.FC = () => {
 
   const generateReceiptText = (payment: PaymentRecord) => {
     const inst = installments.find((i) => i.id === payment.installmentId);
+    let saleDetailsText = '';
+
+    if (inst) {
+      const saleStats = calculateSaleRemainingBalance(inst.saleId, installments);
+      const isInstPaid = inst.remainingAmount <= 0.005;
+      const instStatusStr = isInstPaid
+        ? 'Quitada'
+        : `Saldo desta parcela: ${formatCurrency(inst.remainingAmount)}`;
+
+      const remainingSaleStr = saleStats.isFullySettled
+        ? 'R$ 0,00 (Venda Totalmente Quitada! 🎉)'
+        : `${formatCurrency(saleStats.totalSaleRemaining)} (${saleStats.remainingInstallmentsCount} parcela(s) pendente(s))`;
+
+      saleDetailsText = `*Produto / Descrição:* ${inst.productDescription}
+*Referente à:* Parcela ${inst.installmentNumber}/${inst.totalInstallments}
+*Situação desta Parcela:* ${instStatusStr}
+*Saldo Restante desta Venda:* ${remainingSaleStr}
+`;
+    }
+
     return `*COMPROVANTE DE PAGAMENTO*
 ----------------------------------------
 *Estabelecimento:* ${settings.businessName || 'Meu Financeiro'}
@@ -65,8 +86,7 @@ export const PaymentsView: React.FC = () => {
 *Valor Recebido:* ${formatCurrency(payment.amount)}
 *Forma:* ${formatMethodLabel(payment.paymentMethod)}
 *Data:* ${formatDate(payment.paymentDate)}
-${inst ? `*Referente à:* Parcela ${inst.installmentNumber}/${inst.totalInstallments} (${inst.productDescription})\n*Saldo Restante:* ${formatCurrency(inst.remainingAmount)}` : ''}
-${(payment.notes || payment.observation) ? `*Obs:* ${payment.notes || payment.observation}\n` : ''}----------------------------------------
+${saleDetailsText}${(payment.notes || payment.observation) ? `*Obs:* ${payment.notes || payment.observation}\n` : ''}----------------------------------------
 ${settings.receiptFooterMessage || 'Obrigado pela preferência e pontualidade!'}`;
   };
 
@@ -233,6 +253,28 @@ ${settings.receiptFooterMessage || 'Obrigado pela preferência e pontualidade!'}
                 <p className="text-sm font-black text-emerald-700 pt-1">
                   VALOR PAGO: {formatCurrency(selectedPaymentForReceipt.amount)}
                 </p>
+                {(() => {
+                  const inst = installments.find((i) => i.id === selectedPaymentForReceipt.installmentId);
+                  if (!inst) return null;
+                  const saleStats = calculateSaleRemainingBalance(inst.saleId, installments);
+                  return (
+                    <div className="pt-2 border-t border-slate-200 space-y-0.5 text-[11px]">
+                      <p>
+                        <strong>Ref:</strong> {inst.productDescription} (Parc. {inst.installmentNumber}/{inst.totalInstallments})
+                      </p>
+                      <p>
+                        <strong>Saldo desta Parcela:</strong>{' '}
+                        {inst.remainingAmount <= 0.005 ? 'Quitada' : formatCurrency(inst.remainingAmount)}
+                      </p>
+                      <p className="font-bold text-brand-navy">
+                        <strong>Saldo Restante da Venda:</strong>{' '}
+                        {saleStats.isFullySettled
+                          ? 'R$ 0,00 (Venda Quitada!)'
+                          : `${formatCurrency(saleStats.totalSaleRemaining)} (${saleStats.remainingInstallmentsCount} parc. pendentes)`}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-500 text-center">

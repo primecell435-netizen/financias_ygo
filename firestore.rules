@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Master Administrator UID
+    function isMasterAdmin() {
+      return request.auth != null && request.auth.uid == "Q5ji8a8H8id22G0lRp6iqytg8ty1";
+    }
+
+    // Helper: checks if the authenticated user is an active operator registered under the business account
+    function isActiveOperator(adminUid) {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/users/$(adminUid)/system_users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(adminUid)/system_users/$(request.auth.uid)).data.isActive == true;
+    }
+
+    match /users/{adminUid} {
+      // The Master Administrator has full unrestricted access to their account root
+      allow read, write: if isMasterAdmin() && request.auth.uid == adminUid;
+
+      // Operator profiles
+      match /system_users/{operatorUid} {
+        // Master Admin can create, read, update status, and delete operators
+        allow read, write: if isMasterAdmin() && request.auth.uid == adminUid;
+        // An authenticated operator can read their own profile to verify their role and active status
+        allow get: if request.auth != null && request.auth.uid == operatorUid;
+      }
+
+      // Unique username index (managed exclusively by Master Admin)
+      match /system_users_index/{username} {
+        allow read, write: if isMasterAdmin() && request.auth.uid == adminUid;
+      }
+
+      // Business financial collections: clients, sales, installments, payments, notes
+      match /{collectionName}/{docId} {
+        // Master Admin has full access
+        allow read, write: if isMasterAdmin() && request.auth.uid == adminUid;
+
+        // Active operators can read and manage clients, sales, installments, payments, and notes
+        allow read, write: if adminUid == "Q5ji8a8H8id22G0lRp6iqytg8ty1" &&
+          collectionName in ['clients', 'sales', 'installments', 'payments', 'notes'] &&
+          isActiveOperator(adminUid);
+      }
+
+      // Settings: Operators can read business info (name, PIX key for receipts) but CANNOT modify settings
+      match /settings/{settingDoc} {
+        allow read: if isMasterAdmin() || (adminUid == "Q5ji8a8H8id22G0lRp6iqytg8ty1" && isActiveOperator(adminUid));
+        allow write: if isMasterAdmin() && request.auth.uid == adminUid;
+      }
+
+      // Minhas Contas (Personal Finances): STRICTLY EXCLUSIVE to Master Admin
+      // Operators are explicitly denied any read or write access
+      match /personal_bills/{billId} {
+        allow read, write: if isMasterAdmin() && request.auth.uid == adminUid;
+
+        match /payments/{paymentId} {
+          allow read, write: if isMasterAdmin() && request.auth.uid == adminUid;
+        }
+      }
+    }
+  }
+}

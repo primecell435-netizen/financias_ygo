@@ -15,10 +15,24 @@ import {
 import { useFinance } from '../../context/FinanceContext';
 import { InstallmentInterval } from '../../types/finance';
 import { formatCurrency, getTodayDateString } from '../../utils/formatters';
+import { CurrencyInput } from '../common/CurrencyInput';
+import { useFormDraft } from '../../hooks/useFormDraft';
 
 interface NewSaleViewProps {
   onSuccess: (saleId: string) => void;
   onCancel: () => void;
+}
+
+interface SaleFormData {
+  selectedClientId: string;
+  clientName: string;
+  clientPhone: string;
+  productDescription: string;
+  totalAmount: number | '';
+  installmentsCount: number;
+  intervalType: InstallmentInterval;
+  firstDueDate: string;
+  notes: string;
 }
 
 export const NewSaleView: React.FC<NewSaleViewProps> = ({ onSuccess, onCancel }) => {
@@ -37,6 +51,72 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ onSuccess, onCancel })
     return d.toISOString().split('T')[0];
   });
   const [notes, setNotes] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Draft persistence
+  const { hasDraft, draftValues, draftTimestamp, saveDraft, clearDraft } = useFormDraft<SaleFormData>({
+    formKey: 'nova_venda',
+    initialValues: {
+      selectedClientId: '',
+      clientName: '',
+      clientPhone: '',
+      productDescription: '',
+      totalAmount: '',
+      installmentsCount: 1,
+      intervalType: 'monthly',
+      firstDueDate,
+      notes: '',
+    },
+    isFieldEmpty: (v) => !v.clientName && !v.productDescription && (!v.totalAmount || (v.totalAmount as unknown) === ''),
+  });
+
+  const [draftBannerVisible, setDraftBannerVisible] = useState<boolean>(true);
+
+  // Restore draft callback
+  const handleRestoreDraft = () => {
+    if (!draftValues) return;
+    if (draftValues.selectedClientId !== undefined) setSelectedClientId(draftValues.selectedClientId);
+    if (draftValues.clientName !== undefined) setClientName(draftValues.clientName);
+    if (draftValues.clientPhone !== undefined) setClientPhone(draftValues.clientPhone);
+    if (draftValues.productDescription !== undefined) setProductDescription(draftValues.productDescription);
+    if (draftValues.totalAmount !== undefined) setTotalAmount(draftValues.totalAmount);
+    if (draftValues.installmentsCount !== undefined) setInstallmentsCount(draftValues.installmentsCount);
+    if (draftValues.intervalType !== undefined) setIntervalType(draftValues.intervalType);
+    if (draftValues.firstDueDate !== undefined) setFirstDueDate(draftValues.firstDueDate);
+    if (draftValues.notes !== undefined) setNotes(draftValues.notes);
+    setDraftBannerVisible(false);
+  };
+
+  const handleDiscardDraft = () => {
+    clearDraft();
+    setDraftBannerVisible(false);
+  };
+
+  // Auto-save form draft on changes
+  useEffect(() => {
+    saveDraft({
+      selectedClientId,
+      clientName,
+      clientPhone,
+      productDescription,
+      totalAmount,
+      installmentsCount,
+      intervalType,
+      firstDueDate,
+      notes,
+    });
+  }, [
+    selectedClientId,
+    clientName,
+    clientPhone,
+    productDescription,
+    totalAmount,
+    installmentsCount,
+    intervalType,
+    firstDueDate,
+    notes,
+    saveDraft,
+  ]);
 
   // Editable preview installments
   const [previewInstallments, setPreviewInstallments] = useState<
@@ -111,6 +191,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ onSuccess, onCancel })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setErrorMsg(null);
 
     if (!clientName.trim()) {
@@ -135,6 +216,7 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ onSuccess, onCancel })
       return;
     }
 
+    setIsSubmitting(true);
     const trimmedNotes = notes.trim();
     try {
       const result = await createSale(
@@ -154,9 +236,13 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ onSuccess, onCancel })
         previewInstallments
       );
 
+      // Successfully saved to Firestore -> clear draft
+      clearDraft();
       onSuccess(result.saleId);
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Erro ao cadastrar venda.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -174,10 +260,38 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ onSuccess, onCancel })
         </div>
       </div>
 
-      {errorMsg && (
-        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 shrink-0 text-rose-600" />
-          <span>{errorMsg}</span>
+      {/* Draft Recovery Notification Banner */}
+      {hasDraft && draftBannerVisible && draftValues && (
+        <div className="p-4 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-xl bg-indigo-600 text-white shrink-0">
+              <Package className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs sm:text-sm font-bold text-slate-900">
+                Rascunho de venda em andamento encontrado
+              </p>
+              <p className="text-xs text-slate-500">
+                Você possui dados salvos automaticamente que ainda não foram gravados. Deseja recuperá-los?
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={handleRestoreDraft}
+              className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+            >
+              Restaurar Rascunho
+            </button>
+            <button
+              type="button"
+              onClick={handleDiscardDraft}
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-600 text-xs font-semibold rounded-xl border border-slate-200 transition cursor-pointer"
+            >
+              Descartar
+            </button>
+          </div>
         </div>
       )}
 
@@ -273,14 +387,11 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ onSuccess, onCancel })
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-2.5 text-xs font-extrabold text-slate-400">R$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
+                  <CurrencyInput
                     required
                     placeholder="0,00"
                     value={totalAmount}
-                    onChange={(e) => setTotalAmount(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                    onChange={(val) => setTotalAmount(val)}
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-900 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20 outline-none transition"
                   />
                 </div>
@@ -416,12 +527,9 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ onSuccess, onCancel })
                       <td className="py-2 px-3">
                         <div className="relative max-w-[140px]">
                           <span className="absolute left-2.5 top-1.5 text-xs text-slate-400">R$</span>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0.01"
+                          <CurrencyInput
                             value={inst.amount}
-                            onChange={(e) => handleUpdatePreviewItem(index, 'amount', e.target.value)}
+                            onChange={(val) => handleUpdatePreviewItem(index, 'amount', val === '' ? 0 : val)}
                             className="w-full pl-8 pr-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-800 focus:border-brand-blue outline-none"
                           />
                         </div>
@@ -438,19 +546,29 @@ export const NewSaleView: React.FC<NewSaleViewProps> = ({ onSuccess, onCancel })
         <div className="flex items-center justify-end gap-3 pt-2 keyboard-safe-bottom">
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs sm:text-sm hover:bg-slate-100 transition cursor-pointer"
+            className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs sm:text-sm hover:bg-slate-100 transition cursor-pointer disabled:opacity-50"
           >
             Cancelar
           </button>
 
           <button
             type="submit"
-            disabled={Math.abs(sumDifference) > 0.05}
+            disabled={isSubmitting || Math.abs(sumDifference) > 0.05}
             className="flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-brand-navy to-brand-blue hover:from-brand-navy-light hover:to-brand-blue-hover text-white font-extrabold text-xs sm:text-sm shadow-md hover:shadow-lg transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <CheckCircle2 className="w-4 h-4 text-brand-gold" />
-            <span>Confirmar e Gerar Parcelas</span>
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                <span>Gravando Venda...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-brand-gold" />
+                <span>Confirmar e Gerar Parcelas</span>
+              </>
+            )}
           </button>
         </div>
       </form>

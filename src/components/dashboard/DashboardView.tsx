@@ -28,7 +28,7 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
-  const { summary, installments, sales, clients, settings } = useFinance();
+  const { summary, installments, sales, clients, settings, isDataLoading } = useFinance();
 
   // Filter urgent installments (overdue + due today + due in 7 days)
   const urgentInstallments = React.useMemo(() => {
@@ -78,12 +78,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-2xl font-black text-brand-navy tracking-tight">
-              {formatCurrency(summary.totalReceivable)}
-            </p>
+            {isDataLoading ? (
+              <div className="h-8 w-32 bg-slate-200 animate-pulse rounded-lg my-1" />
+            ) : (
+              <p className="text-2xl font-black text-brand-navy tracking-tight">
+                {formatCurrency(summary.totalReceivable)}
+              </p>
+            )}
             <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
               <span className="font-semibold text-brand-blue">
-                {summary.countPendingInstallments}
+                {isDataLoading ? '—' : summary.countPendingInstallments}
               </span>
               <span>parcela(s) em aberto</span>
             </div>
@@ -101,12 +105,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-2xl font-black text-emerald-600 tracking-tight">
-              {formatCurrency(summary.totalReceived)}
-            </p>
+            {isDataLoading ? (
+              <div className="h-8 w-32 bg-slate-200 animate-pulse rounded-lg my-1" />
+            ) : (
+              <p className="text-2xl font-black text-emerald-600 tracking-tight">
+                {formatCurrency(summary.totalReceived)}
+              </p>
+            )}
             <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
               <span className="font-semibold text-emerald-700">
-                {collectionPercentage}%
+                {isDataLoading ? '—' : `${collectionPercentage}%`}
               </span>
               <span>do volume total quitado</span>
             </div>
@@ -124,11 +132,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-2xl font-black text-rose-600 tracking-tight">
-              {formatCurrency(summary.totalOverdue)}
-            </p>
+            {isDataLoading ? (
+              <div className="h-8 w-32 bg-slate-200 animate-pulse rounded-lg my-1" />
+            ) : (
+              <p className="text-2xl font-black text-rose-600 tracking-tight">
+                {formatCurrency(summary.totalOverdue)}
+              </p>
+            )}
             <div className="flex items-center gap-2 mt-1.5 text-xs">
-              {summary.countOverdueInstallments > 0 ? (
+              {isDataLoading ? (
+                <span className="text-slate-400 text-xs">Carregando...</span>
+              ) : summary.countOverdueInstallments > 0 ? (
                 <span className="font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full text-[11px]">
                   {summary.countOverdueInstallments} vencida(s)
                 </span>
@@ -150,12 +164,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-2xl font-black text-amber-600 tracking-tight">
-              {formatCurrency(summary.totalDueToday + summary.totalDueNext7Days)}
-            </p>
+            {isDataLoading ? (
+              <div className="h-8 w-32 bg-slate-200 animate-pulse rounded-lg my-1" />
+            ) : (
+              <p className="text-2xl font-black text-amber-600 tracking-tight">
+                {formatCurrency(summary.totalDueToday + summary.totalDueNext7Days)}
+              </p>
+            )}
             <div className="flex items-center justify-between mt-1.5 text-xs text-slate-500">
-              <span>Hoje: <strong>{formatCurrency(summary.totalDueToday)}</strong></span>
-              <span>7 dias: <strong>{formatCurrency(summary.totalDueNext7Days)}</strong></span>
+              <span>Hoje: <strong>{isDataLoading ? '—' : formatCurrency(summary.totalDueToday)}</strong></span>
+              <span>7 dias: <strong>{isDataLoading ? '—' : formatCurrency(summary.totalDueNext7Days)}</strong></span>
             </div>
           </div>
         </div>

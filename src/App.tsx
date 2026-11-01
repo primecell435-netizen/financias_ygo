@@ -19,6 +19,9 @@ import { PaymentsView } from './components/payments/PaymentsView';
 import { NotesAgendaView } from './components/notes/NotesAgendaView';
 import { SettingsView } from './components/settings/SettingsView';
 import { UsersManagementView } from './components/users/UsersManagementView';
+import { PersonalBillsView } from './components/personal/PersonalBillsView';
+import { PersonalFinanceProvider } from './context/PersonalFinanceContext';
+import { FloatingCalculator } from './components/common/FloatingCalculator';
 import { useKeyboardAdjustment } from './hooks/useKeyboardAdjustment';
 
 function FinanceApp() {
@@ -70,6 +73,8 @@ function FinanceApp() {
         return <PaymentsView />;
       case 'agenda':
         return <NotesAgendaView />;
+      case 'minhas_contas':
+        return <PersonalBillsView />;
       case 'usuarios':
         return <UsersManagementView />;
       case 'configuracoes':
@@ -84,7 +89,7 @@ function FinanceApp() {
       {/* Desktop & Mobile Sidebar Drawer */}
       <AppSidebar
         activeTab={activeTab}
-        onNavigate={(tab) => setActiveTab(tab)}
+        onNavigate={(tab) => handleNavigate(tab)}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
@@ -94,7 +99,7 @@ function FinanceApp() {
         {/* Sticky Header */}
         <AppHeader
           activeTab={activeTab}
-          onNavigate={(tab) => setActiveTab(tab)}
+          onNavigate={(tab) => handleNavigate(tab)}
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
 
@@ -107,9 +112,12 @@ function FinanceApp() {
       {/* Mobile Bottom Navigation Bar */}
       <BottomNavigation
         activeTab={activeTab}
-        onNavigate={(tab) => setActiveTab(tab)}
+        onNavigate={(tab) => handleNavigate(tab)}
         onOpenMobileMenu={() => setMobileMenuOpen(true)}
       />
+
+      {/* Floating Discrete Calculator */}
+      <FloatingCalculator />
 
       {/* Connectivity Alert for PWA Offline Mode */}
       <OfflineIndicator />
@@ -120,7 +128,9 @@ function FinanceApp() {
 export default function App() {
   return (
     <FinanceProvider>
-      <AuthGatekeeper />
+      <PersonalFinanceProvider>
+        <AuthGatekeeper />
+      </PersonalFinanceProvider>
     </FinanceProvider>
   );
 }

@@ -22,9 +22,11 @@ import {
   User,
   ExternalLink,
   ChevronDown,
+  Trash2,
 } from 'lucide-react';
 import { useFinance } from '../../context/FinanceContext';
 import { Installment, PaymentMethod } from '../../types/finance';
+import { CurrencyInput } from '../common/CurrencyInput';
 import {
   formatCurrency,
   formatDate,
@@ -33,6 +35,7 @@ import {
   calculateDaysDifference,
   generateWhatsAppLink,
   getTodayDateString,
+  calculateSaleRemainingBalance,
 } from '../../utils/formatters';
 
 interface ClientReceivableGroup {
@@ -65,11 +68,16 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({
     transferRemainingBalance,
     splitRemainingBalance,
     updateInstallment,
+    deleteSale,
     settings,
   } = useFinance();
 
   // Navigation state: null = client list; string = client ID
   const [selectedClientId, setSelectedClientId] = useState<string | null>(initialClientId);
+
+  // In-app sale deletion state
+  const [saleToDelete, setSaleToDelete] = useState<{ saleId: string; description: string } | null>(null);
+  const [isDeletingSale, setIsDeletingSale] = useState(false);
 
   useEffect(() => {
     setSelectedClientId(initialClientId);
@@ -99,6 +107,21 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({
   >('keep_open');
   const [postPayTargetDate, setPostPayTargetDate] = useState<string>('');
 
+  // Immediate payment receipt modal
+  const [paymentReceiptModal, setPaymentReceiptModal] = useState<{
+    clientName: string;
+    clientPhone: string;
+    amount: number;
+    paymentMethod: PaymentMethod;
+    paymentDate: string;
+    notes?: string;
+    installmentNumber: number;
+    totalInstallments: number;
+    productDescription: string;
+    remainingInstallmentAmount: number;
+    saleId: string;
+  } | null>(null);
+
   // Transfer modal state
   const [transferMode, setTransferMode] = useState<'next' | 'custom_date'>('next');
   const [transferCustomDate, setTransferCustomDate] = useState<string>('');
@@ -120,6 +143,24 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({
   const showNotification = (type: 'success' | 'error', text: string) => {
     setFeedback({ type, text });
     setTimeout(() => setFeedback(null), 4000);
+  };
+
+  const handleConfirmDeleteSale = async () => {
+    if (!saleToDelete) return;
+    setIsDeletingSale(true);
+    try {
+      const res = await deleteSale(saleToDelete.saleId);
+      if (res.success) {
+        showNotification('success', 'Venda e parcelas excluídas com sucesso.');
+        setSaleToDelete(null);
+      } else {
+        showNotification('error', res.message || 'Erro ao excluir venda.');
+      }
+    } catch (err: any) {
+      showNotification('error', err?.message || 'Erro ao excluir venda.');
+    } finally {
+      setIsDeletingSale(false);
+    }
   };
 
   // Group installments by Client (each client appears exactly once!)
@@ -303,6 +344,20 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({
 
     if (res.success) {
       showNotification('success', res.message);
+      const remainingThisInst = Math.max(0, selectedInstForPayment.remainingAmount - Number(payAmount));
+      setPaymentReceiptModal({
+        clientName: selectedInstForPayment.clientName,
+        clientPhone: selectedInstForPayment.clientPhone,
+        amount: Number(payAmount),
+        paymentMethod: payMethod,
+        paymentDate: payDate,
+        notes: payNotes,
+        installmentNumber: selectedInstForPayment.installmentNumber,
+        totalInstallments: selectedInstForPayment.totalInstallments,
+        productDescription: selectedInstForPayment.productDescription,
+        remainingInstallmentAmount: remainingThisInst,
+        saleId: selectedInstForPayment.saleId,
+      });
       setSelectedInstForPayment(null);
     } else {
       showNotification('error', res.message);
@@ -1038,6 +1093,22 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({
                               <History className="w-4 h-4 text-slate-500" />
                             </button>
 
+                            {inst.saleId && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setSaleToDelete({
+                                    saleId: inst.saleId,
+                                    description: `${inst.productDescription} (Venda #${inst.saleId.slice(-6)})`,
+                                  })
+                                }
+                                className="p-2 rounded-xl border border-slate-200 text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-semibold transition cursor-pointer"
+                                title="Excluir ou cancelar esta venda e suas parcelas"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+
                             {selectedClientGroup.clientPhone && !isPaid && !inst.isTransferred && (
                               <a
                                 href={generateWhatsAppLink(
@@ -1103,21 +1174,13 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Valor a Receber (R$) <span className="text-rose-500">*</span>
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">R$</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max={selectedInstForPayment.remainingAmount}
-                    required
-                    value={payAmount}
-                    onChange={(e) =>
-                      setPayAmount(e.target.value === '' ? '' : parseFloat(e.target.value))
-                    }
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-black text-emerald-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none"
-                  />
-                </div>
+                <CurrencyInput
+                  value={payAmount}
+                  onChange={(val) => setPayAmount(val)}
+                  max={selectedInstForPayment.remainingAmount}
+                  className="w-full text-sm font-black text-emerald-700 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200"
+                  placeholder="0,00"
+                />
                 <div className="flex gap-2 mt-2">
                   <button
                     type="button"
@@ -1485,18 +1548,13 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({
             <form onSubmit={handleSubmitEdit} className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Novo Valor da Parcela (R$)
+                  Novo Valor da Parcela (R$) <span className="text-rose-500">*</span>
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  required
+                <CurrencyInput
                   value={editAmount}
-                  onChange={(e) =>
-                    setEditAmount(e.target.value === '' ? '' : parseFloat(e.target.value))
-                  }
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-900 focus:border-brand-blue outline-none"
+                  onChange={(val) => setEditAmount(val)}
+                  className="w-full text-sm font-bold text-slate-900 focus:border-brand-blue"
+                  placeholder="0,00"
                 />
               </div>
 
@@ -1639,6 +1697,151 @@ export const AccountsReceivableView: React.FC<AccountsReceivableViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* MODAL: CONFIRM SALE DELETION */}
+      {saleToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Confirmar Exclusão de Venda</h3>
+                <p className="text-xs text-slate-500">{saleToDelete.description}</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Esta ação cancelará e removerá permanentemente esta venda e todas as parcelas vinculadas do Cloud Firestore.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={isDeletingSale}
+                onClick={() => setSaleToDelete(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeletingSale}
+                onClick={handleConfirmDeleteSale}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingSale ? 'Excluindo...' : 'Sim, Excluir Venda'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL: COMPROVANTE DE PAGAMENTO COM SALDO REAL DA VENDA */}
+      {paymentReceiptModal && (() => {
+        const saleStats = calculateSaleRemainingBalance(paymentReceiptModal.saleId, installments);
+        // The remaining balance of the sale reflecting this payment
+        const effectiveSaleRemaining = Math.max(0, Number((saleStats.totalSaleRemaining - paymentReceiptModal.amount).toFixed(2)));
+        const isSaleSettled = effectiveSaleRemaining <= 0.005;
+
+        const formatMethodLabel = (m: string) => {
+          switch (m) {
+            case 'pix': return 'PIX';
+            case 'dinheiro': return 'Dinheiro';
+            case 'cartao_credito': return 'Cartão de Crédito';
+            case 'cartao_debito': return 'Cartão de Débito';
+            case 'transferencia': return 'Transferência Bancária';
+            default: return 'Outro';
+          }
+        };
+
+        const handleSendReceiptWhatsApp = () => {
+          const msg = `*COMPROVANTE DE PAGAMENTO*
+----------------------------------------
+*Estabelecimento:* ${settings.businessName || 'Meu Financeiro'}
+*Cliente:* ${paymentReceiptModal.clientName}
+*Valor Recebido:* ${formatCurrency(paymentReceiptModal.amount)}
+*Forma:* ${formatMethodLabel(paymentReceiptModal.paymentMethod)}
+*Data:* ${formatDate(paymentReceiptModal.paymentDate)}
+*Produto / Descrição:* ${paymentReceiptModal.productDescription}
+*Referente à:* Parcela ${paymentReceiptModal.installmentNumber}/${paymentReceiptModal.totalInstallments}
+*Situação desta Parcela:* ${paymentReceiptModal.remainingInstallmentAmount <= 0.005 ? 'Quitada' : `Saldo desta parcela: ${formatCurrency(paymentReceiptModal.remainingInstallmentAmount)}`}
+*Saldo Restante desta Venda:* ${isSaleSettled ? 'R$ 0,00 (Venda Totalmente Quitada! 🎉)' : `${formatCurrency(effectiveSaleRemaining)}`}
+${paymentReceiptModal.notes ? `*Obs:* ${paymentReceiptModal.notes}\n` : ''}----------------------------------------
+${settings.receiptFooterMessage || 'Obrigado pela preferência e pontualidade!'}`;
+
+          const url = generateWhatsAppLink(paymentReceiptModal.clientPhone, msg);
+          window.open(url, '_blank');
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+            <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                    <CheckCircle2 className="w-5 h-5 font-black" />
+                  </div>
+                  <h3 className="text-base font-bold text-brand-navy">Comprovante de Pagamento</h3>
+                </div>
+                <button
+                  onClick={() => setPaymentReceiptModal(null)}
+                  className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Receipt Paper Preview */}
+              <div className="p-4 bg-slate-50 border border-dashed border-slate-300 rounded-2xl text-xs space-y-2 font-mono text-slate-800">
+                <div className="text-center pb-2 border-b border-slate-200">
+                  <p className="font-extrabold text-sm">{settings.businessName || 'MEU FINANCEIRO'}</p>
+                  <p className="text-[10px] text-slate-500">Recibo de Quitação</p>
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <p><strong>Cliente:</strong> {paymentReceiptModal.clientName}</p>
+                  <p><strong>Data:</strong> {formatDate(paymentReceiptModal.paymentDate)}</p>
+                  <p><strong>Forma:</strong> {formatMethodLabel(paymentReceiptModal.paymentMethod)}</p>
+                  <p className="text-sm font-black text-emerald-700 pt-1">
+                    VALOR RECEBIDO: {formatCurrency(paymentReceiptModal.amount)}
+                  </p>
+                  <div className="pt-2 border-t border-slate-200 space-y-0.5 text-[11px]">
+                    <p><strong>Ref:</strong> {paymentReceiptModal.productDescription} (Parc. {paymentReceiptModal.installmentNumber}/{paymentReceiptModal.totalInstallments})</p>
+                    <p><strong>Saldo desta Parcela:</strong> {paymentReceiptModal.remainingInstallmentAmount <= 0.005 ? 'Quitada' : formatCurrency(paymentReceiptModal.remainingInstallmentAmount)}</p>
+                    <p className="font-bold text-brand-navy">
+                      <strong>Saldo Restante desta Venda:</strong>{' '}
+                      {isSaleSettled
+                        ? 'R$ 0,00 (Venda Quitada!)'
+                        : formatCurrency(effectiveSaleRemaining)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200 text-[10px] text-slate-500 text-center">
+                  {settings.receiptFooterMessage || 'Obrigado pela preferência e pontualidade!'}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={handleSendReceiptWhatsApp}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Enviar no WhatsApp</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentReceiptModal(null)}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold cursor-pointer"
+                >
+                  Concluir
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

@@ -33,12 +33,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onNavigateToSale,
   onNavigateToReceivableClient,
 }) => {
-  const { clients, installments, sales, createClient, updateClient, deleteClient } = useFinance();
+  const { clients, installments, sales, createClient, updateClient, deleteClient, deleteSale } = useFinance();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [selectedClientForDetails, setSelectedClientForDetails] = useState<Client | null>(null);
+
+  // In-app deletion confirmation states
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [saleToDelete, setSaleToDelete] = useState<{ saleId: string; description: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states
   const [formName, setFormName] = useState('');
@@ -122,17 +127,46 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     }
   };
 
-  const handleDeleteClient = async (client: Client) => {
-    if (confirm(`Tem certeza que deseja excluir o cadastro de ${client.name}?`)) {
-      const res = await deleteClient(client.id);
+  const handleRequestDeleteClient = (client: Client) => {
+    setClientToDelete(client);
+  };
+
+  const handleConfirmDeleteClient = async () => {
+    if (!clientToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteClient(clientToDelete.id);
       if (res.success) {
         showNotification('success', res.message);
-        if (selectedClientForDetails?.id === client.id) {
+        if (selectedClientForDetails?.id === clientToDelete.id) {
           setSelectedClientForDetails(null);
         }
+        setClientToDelete(null);
       } else {
         showNotification('error', res.message);
       }
+    } catch (err: any) {
+      showNotification('error', err?.message || 'Erro ao excluir cliente.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleConfirmDeleteSale = async () => {
+    if (!saleToDelete) return;
+    setIsDeleting(true);
+    try {
+      const res = await deleteSale(saleToDelete.saleId);
+      if (res.success) {
+        showNotification('success', 'Venda e parcelas excluídas com sucesso.');
+        setSaleToDelete(null);
+      } else {
+        showNotification('error', res.message || 'Erro ao excluir venda.');
+      }
+    } catch (err: any) {
+      showNotification('error', err?.message || 'Erro ao excluir venda.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -270,7 +304,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteClient(client)}
+                        onClick={() => handleRequestDeleteClient(client)}
                         className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-50 transition"
                         title="Excluir cliente"
                       >
@@ -534,14 +568,31 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                             </strong>
                           </p>
                         </div>
-                        <div className="text-right">
-                          <p className="font-black text-brand-navy">
-                            {formatCurrency(inst.remainingAmount)}
-                          </p>
-                          {inst.paidAmount > 0 && (
-                            <p className="text-[10px] text-emerald-600 font-semibold">
-                              Pago: {formatCurrency(inst.paidAmount)}
+                        <div className="text-right flex items-center gap-2">
+                          <div>
+                            <p className="font-black text-brand-navy">
+                              {formatCurrency(inst.remainingAmount)}
                             </p>
+                            {inst.paidAmount > 0 && (
+                              <p className="text-[10px] text-emerald-600 font-semibold">
+                                Pago: {formatCurrency(inst.paidAmount)}
+                              </p>
+                            )}
+                          </div>
+                          {inst.saleId && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSaleToDelete({
+                                  saleId: inst.saleId,
+                                  description: `${inst.productDescription} (Venda #${inst.saleId.slice(-6)})`,
+                                })
+                              }
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                              title="Excluir/Cancelar venda fiada"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </div>
                       </div>
@@ -556,6 +607,82 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                 className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200 cursor-pointer"
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONFIRM CLIENT DELETION */}
+      {clientToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Confirmar Exclusão de Cliente</h3>
+                <p className="text-xs text-slate-500">{clientToDelete.name}</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Tem certeza de que deseja excluir o cadastro de <strong>{clientToDelete.name}</strong>? Por segurança, o sistema não permite excluir clientes que possuam parcelas em aberto.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setClientToDelete(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDeleteClient}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? 'Excluindo...' : 'Sim, Excluir Cliente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CONFIRM SALE DELETION */}
+      {saleToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Confirmar Exclusão de Venda</h3>
+                <p className="text-xs text-slate-500">{saleToDelete.description}</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Esta ação cancelará e removerá permanentemente esta venda e todas as suas parcelas do Cloud Firestore. Esta ação não poderá ser desfeita.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setSaleToDelete(null)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDeleteSale}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? 'Excluindo...' : 'Sim, Excluir Venda'}
               </button>
             </div>
           </div>

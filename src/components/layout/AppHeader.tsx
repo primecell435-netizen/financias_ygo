@@ -21,6 +21,8 @@ const tabTitles: Record<string, { title: string; subtitle: string }> = {
   clientes: { title: 'Clientes', subtitle: 'Contatos e histórico financeiro individual' },
   pagamentos: { title: 'Histórico de Pagamentos', subtitle: 'Recibos e entradas confirmadas' },
   agenda: { title: 'Anotações e Agenda', subtitle: 'Lembretes e compromissos de cobrança' },
+  minhas_contas: { title: 'Minhas Contas', subtitle: 'Gestão de despesas e compromissos pessoais' },
+  usuarios: { title: 'Usuários do Sistema', subtitle: 'Gerenciamento de operadores e permissões' },
   configuracoes: { title: 'Configurações', subtitle: 'Dados do negócio e backup do sistema' },
 };
 
@@ -90,8 +92,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
             {/* Action: Ver Parcelas (substituindo o antigo botão de venda) */}
             <button
+              type="button"
               onClick={() => onNavigate('contas_receber')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl shadow-xs hover:shadow-md transition cursor-pointer ${
+              className={`relative z-10 pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl shadow-xs hover:shadow-md transition cursor-pointer ${
                 activeTab === 'contas_receber'
                   ? 'bg-brand-navy text-white'
                   : 'bg-gradient-to-r from-brand-navy to-brand-blue hover:from-brand-navy-light hover:to-brand-blue-hover text-white'

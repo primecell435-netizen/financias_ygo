@@ -48,6 +48,7 @@ interface FinanceContextType {
   userRole: 'admin' | 'operator' | null;
   operatorProfile: SystemUser | null;
   isAuthLoading: boolean;
+  isDataLoading: boolean;
   logout: () => Promise<void>;
 
   // Operator Management (Master Admin only)
@@ -172,6 +173,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [userRole, setUserRole] = useState<'admin' | 'operator' | null>(null);
   const [operatorProfile, setOperatorProfile] = useState<SystemUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const [isDataLoading, setIsDataLoading] = useState<boolean>(true);
 
   // System Users Management (Operators registered by Master Admin)
   const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
@@ -289,16 +291,28 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setInstallments([]);
       setPayments([]);
       setNotes([]);
+      setIsDataLoading(false);
       return;
     }
 
     setSyncStatus('syncing');
+    setIsDataLoading(true);
+
+    let loadedCount = 0;
+    const markLoaded = () => {
+      loadedCount++;
+      if (loadedCount >= 2) {
+        setIsDataLoading(false);
+      }
+    };
+    const safetyTimeout = setTimeout(() => setIsDataLoading(false), 2500);
 
     // Subscribe to Clients
     const unsubClients = subscribeCollection<Client>(
       'clients',
       (items, metadata) => {
         setClients(items);
+        markLoaded();
         if (metadata.hasPendingWrites) {
           setSyncStatus('pending');
         } else if (!metadata.fromCache) {
@@ -309,6 +323,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       (err) => {
         setSyncStatus('error');
         setSyncErrorMessage(err.message);
+        markLoaded();
       },
       activeUid
     );
@@ -337,6 +352,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       'installments',
       (items, metadata) => {
         setInstallments(items);
+        markLoaded();
         if (metadata.hasPendingWrites) {
           setSyncStatus('pending');
         } else if (!metadata.fromCache) {
@@ -347,6 +363,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       (err) => {
         setSyncStatus('error');
         setSyncErrorMessage(err.message);
+        markLoaded();
       },
       activeUid
     );
@@ -410,6 +427,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
 
     return () => {
+      clearTimeout(safetyTimeout);
       unsubClients();
       unsubSales();
       unsubInstallments();
@@ -1391,6 +1409,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         userRole,
         operatorProfile,
         isAuthLoading,
+        isDataLoading,
         logout,
         systemUsers,
         createSystemUser,

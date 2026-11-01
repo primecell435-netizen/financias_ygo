@@ -167,11 +167,16 @@ export function parseFirebaseAuthError(error: any): FirebaseAuthErrorDetails {
       'Verifique no Console do Firebase (Authentication > Usuários) se não foi criada uma segunda conta por engano. Lembre-se que o UID deve ser mantido como "' +
       AUTHORIZED_ADMIN_UID +
       '".';
-  } else if (lowerCode === 'auth/unauthorized-uid') {
-    code = 'auth/unauthorized-uid';
+  } else if (
+    lowerCode.includes('permission-denied') ||
+    lowerMsg.includes('missing or insufficient permissions') ||
+    lowerMsg.includes('permission-denied')
+  ) {
+    code = 'firestore/permission-denied';
     userFriendlyMessage =
-      'Acesso Negado: O usuário autenticado não possui o UID do Administrador autorizado.';
-    suggestedAction = `O sistema aceita exclusivamente o UID administrador "${AUTHORIZED_ADMIN_UID}".`;
+      'Permissão insuficiente no Firestore: As regras de segurança do projeto no Firebase Console precisam autorizar o acesso de operadores cadastrados.';
+    suggestedAction =
+      'No Firebase Console > Firestore Database > Regras, publique as regras de segurança atualizadas do arquivo firestore.rules para liberar o acesso de operadores.';
   } else {
     code = rawCode || 'auth/unknown-error';
     userFriendlyMessage = `Erro retornado pelo Firebase: ${rawMsg || 'Falha na resposta do servidor.'}`;
@@ -226,8 +231,32 @@ export async function loginWithIdentifier(
     }
 
     // Check if registered system user in Firestore
-    const userDocRef = doc(db, `users/${AUTHORIZED_ADMIN_UID}/system_users`, user.uid);
-    const userSnap = await getDoc(userDocRef);
+    let userSnap;
+    try {
+      const userDocRef = doc(db, `users/${AUTHORIZED_ADMIN_UID}/system_users`, user.uid);
+      userSnap = await getDoc(userDocRef);
+    } catch (firestoreErr: any) {
+      console.error('⛔ [MEU FINANCEIRO] Erro ao consultar cadastro do operador no Firestore:', firestoreErr);
+      await signOut(auth);
+      if (
+        firestoreErr?.code === 'permission-denied' ||
+        String(firestoreErr?.message || '').toLowerCase().includes('permission')
+      ) {
+        throw new AppAuthError({
+          code: 'firestore/permission-denied',
+          userFriendlyMessage:
+            'Acesso negado pelas regras de segurança do Firestore: É necessário publicar as regras de segurança atualizadas no Firebase Console para que os operadores possam acessar o sistema.',
+          technicalMessage: firestoreErr.message || 'Missing or insufficient permissions',
+          suggestedAction:
+            'Acesse o Firebase Console > Firestore Database > Regras e publique o conteúdo do arquivo firestore.rules do projeto.',
+          isApiKeyIssue: false,
+          isDomainIssue: false,
+          isOperationNotAllowed: false,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      throw firestoreErr;
+    }
 
     if (!userSnap.exists()) {
       console.warn(`⛔ [MEU FINANCEIRO] UID "${user.uid}" não cadastrado na lista de operadores do administrador.`);

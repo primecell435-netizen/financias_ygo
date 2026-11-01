@@ -61,8 +61,10 @@ export function subscribeCollection<T extends { id: string }>(
       onData(items, snapshot.metadata);
     },
     (err) => {
-      console.error(`Erro no listener da coleção ${collectionName}:`, err);
-      handleFirestoreError(err, OperationType.LIST, path);
+      console.warn(`Erro no listener da coleção ${collectionName}:`, err?.message || err);
+      if (onError) {
+        onError(err);
+      }
     }
   );
 }
@@ -86,8 +88,10 @@ export function subscribeUserSettings(
       }
     },
     (err) => {
-      console.error('Erro ao ler configurações do usuário:', err);
-      handleFirestoreError(err, OperationType.GET, `users/${userId}/settings/profile`);
+      console.warn('Erro ao ler configurações do usuário:', err?.message || err);
+      if (onError) {
+        onError(err);
+      }
     }
   );
 }
